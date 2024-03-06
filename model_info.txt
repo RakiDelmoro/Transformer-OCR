@@ -1,0 +1,5 @@
+400 million Model parameters:
+Generated data each epoch - 6400
+input text length - 10
+
+

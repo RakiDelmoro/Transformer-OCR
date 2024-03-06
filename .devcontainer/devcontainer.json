@@ -1,0 +1,11 @@
+{
+	"image": "nvcr.io/nvidia/pytorch:23.09-py3@sha256:b62b664b830dd9f602e2657f471286a075e463ac75d10ab8e8073596fcb36639",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python"
+			]
+		}
+	},
+	"runArgs": [ "--gpus", "all" ]
+}
