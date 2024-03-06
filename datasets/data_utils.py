@@ -26,9 +26,9 @@ max_height_by_font_cache = {}
 def generate_random_text(length_of_char: int):
     chars_to_generate = CHARS[4:]
 
-    # generate = "".join(random.choice(chars_to_generate) for _ in range(random.randint(1, length_of_char)))
+    generate = "".join(random.choice(chars_to_generate) for _ in range(random.randint(1, length_of_char)))
 
-    generate = "".join(random.choice(chars_to_generate) for _ in range(length_of_char))
+    # generate = "".join(random.choice(chars_to_generate) for _ in range(length_of_char))
 
     return generate
 
