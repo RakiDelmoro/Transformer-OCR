@@ -1,14 +1,12 @@
 import os
-import random
 import torch
 import Levenshtein
-from tqdm import tqdm
-
-import statistics as S
-from einops import rearrange
 import numpy as np
-from constants import DEVICE, START_TOKEN, END_TOKEN, INFERENCE_PHRASE_LENGTH
+import statistics as S
+
+from tqdm import tqdm
 from datasets.data_utils import decode_for_print, char_to_index
+from constants import DEVICE, START_TOKEN, END_TOKEN, INFERENCE_PHRASE_LENGTH
 
 # CONSTANTS
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -92,50 +90,51 @@ def evaluate_model(validation_dataset, model, dataloader_length,
     
     return val_loss
 
-def save_checkpoint(epoch, model, optimizer, loss):
+def save_checkpoint(epoch, model, optimizer, loss, checkpoint_folder):
     checkpoint = {
         "epoch": epoch,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
-        "loss": loss
+        "loss": loss,
     }
 
-    return checkpoint
+    torch.save(checkpoint, f"./{checkpoint_folder}/checkpoint-{epoch%5}.tar")
 
-def get_latest_modified_file(model_checkpoint_folder, list_of_checkpoint_files): 
+def get_latest_save_checkpoint(model_checkpoint_folder, list_of_checkpoint_files): 
     latest_modified_checkpoint_file = ""
     for each in range(len(list_of_checkpoint_files)):
         checkpoint_file = list_of_checkpoint_files[each]
-    
+
         if latest_modified_checkpoint_file == "":
             latest_modified_checkpoint_file += checkpoint_file
-        
-        checkpoint_mod_time = os.path.getmtime(os.path.join(model_checkpoint_folder, checkpoint_file))
-        latest_checkpoint_mod_time = os.path.getmtime(os.path.join(model_checkpoint_folder, latest_modified_checkpoint_file))
-        
-        if checkpoint_mod_time < latest_checkpoint_mod_time:
-            latest_modified_checkpoint_file.replace(latest_modified_checkpoint_file, checkpoint_file)
 
-    return latest_modified_checkpoint_file
+        checkpoint_status = os.path.getmtime(os.path.join(model_checkpoint_folder, checkpoint_file))
+        latest_checkpoint_status = os.path.getmtime(os.path.join(model_checkpoint_folder, latest_modified_checkpoint_file))
+
+        if checkpoint_status > latest_checkpoint_status:
+            latest_modified_checkpoint_file = ""
+            latest_modified_checkpoint_file += checkpoint_file
+
+    return os.path.join(model_checkpoint_folder, latest_modified_checkpoint_file)
 
 def load_checkpoint(model_checkpoint_folder, model, optimizer):
     list_of_file_checkpoints = os.listdir(model_checkpoint_folder)
     for _ in range(len(list_of_file_checkpoints)):
         try:
-            latest_checkpoint_file = get_latest_modified_file(model_checkpoint_folder, list_of_file_checkpoints)
-            checkpoint = torch.load(os.path.join(model_checkpoint_folder, latest_checkpoint_file))
-            model.load_state_dict(checkpoint["model_state_dict"])
-            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-            load_epoch = checkpoint["epoch"]
-            load_loss = checkpoint["loss"]
-            print(f"Successfully load checkpoint from file: {latest_checkpoint_file}")
+            checkpoint_file = get_latest_save_checkpoint(model_checkpoint_folder, list_of_file_checkpoints)
+            checkpoint_file_loaded = torch.load(checkpoint_file)
+            model.load_state_dict(checkpoint_file_loaded["model_state_dict"])
+            optimizer.load_state_dict(checkpoint_file_loaded["optimizer_state_dict"])
+            load_epoch = checkpoint_file_loaded["epoch"]
+            load_loss = checkpoint_file_loaded["loss"]
+            print(f"Successfully load checkpoint from file: {checkpoint_file}")
             break
         except RuntimeError:
-            print(f"Failed to load checkpoint from file: {latest_checkpoint_file}")
-            list_of_file_checkpoints.remove(latest_checkpoint_file)
+            print(f"Failed to load checkpoint from file: {checkpoint_file}")
+            list_of_file_checkpoints.remove(checkpoint_file)
             continue
 
-    return load_epoch, load_loss, latest_checkpoint_file
+    return load_epoch, load_loss, checkpoint_file
 
 def model_and_target_string(batched_model_logits, batched_expected):
     model_pred = batched_model_logits.data
